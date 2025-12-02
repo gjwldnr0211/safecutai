@@ -1,0 +1,9 @@
+{
+  "name": "Hair Stylist",
+  "description": "출장지에서 실패 없는 머리를 하기 위한 AI 헤어 스타일 컨설턴트 및 미용실 찾기 서비스",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
