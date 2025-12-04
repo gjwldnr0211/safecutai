@@ -100,7 +100,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto h-screen bg-slate-50 shadow-2xl overflow-hidden relative">
+    // Main app container - using h-full to support mobile webview constraints
+    <div className="max-w-md mx-auto h-full bg-slate-50 shadow-2xl overflow-hidden relative">
       <div className="absolute top-0 left-0 w-full h-1 bg-gray-200 z-10">
         <div 
             className="h-full bg-primary transition-all duration-500 ease-out"
