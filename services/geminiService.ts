@@ -1,9 +1,38 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StyleRecommendation, AnalysisOptions } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Singleton to hold the initialized GoogleGenAI instance
+let ai: GoogleGenAI | null = null;
+
+// Function to get the initialized AI instance
+const getAi = async (): Promise<GoogleGenAI> => {
+    if (ai) {
+        return ai;
+    }
+
+    try {
+        const response = await fetch('/config.json');
+        if (!response.ok) {
+            throw new Error('Network response was not ok while fetching config.json');
+        }
+        const config = await response.json();
+        const apiKey = config.VITE_GEMINI_API_KEY;
+
+        if (!apiKey) {
+            throw new Error("API key not found in config.json");
+        }
+
+        ai = new GoogleGenAI({ apiKey });
+        return ai;
+    } catch (error) {
+        console.error("Failed to fetch or use config.json:", error);
+        throw new Error("Could not initialize AI service");
+    }
+};
+
 
 export const getHairstyleFromImage = async (base64Image: string, lang: 'ko' | 'en' = 'ko'): Promise<{name: string, description: string}> => {
+    const localAi = await getAi();
     const modelId = "gemini-2.5-flash";
     const langInstruction = lang === 'en' ? "Answer in English." : "Answer in Korean.";
     
@@ -16,7 +45,7 @@ export const getHairstyleFromImage = async (base64Image: string, lang: 'ko' | 'e
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await localAi.models.generateContent({
             model: modelId,
             contents: {
                 parts: [
@@ -55,7 +84,7 @@ export const analyzeHairStyle = async (
   targetStyle: string,
   options?: AnalysisOptions
 ): Promise<StyleRecommendation> => {
-  
+  const localAi = await getAi();
   const lang = options?.language || 'ko';
   const isEn = lang === 'en';
 
@@ -107,7 +136,7 @@ export const analyzeHairStyle = async (
       parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
     }
 
-    const response = await ai.models.generateContent({
+    const response = await localAi.models.generateContent({
       model: analysisModelId,
       contents: { parts },
       config: {
@@ -154,6 +183,7 @@ export const analyzeHairStyle = async (
 
     // 2. Image Generation (Face-Swap / Hairstyle Transfer)
     try {
+      const imageGenAi = await getAi();
       let imageParts: any[] = [];
       
       const genderPrompt = options?.gender ? (options.gender === 'Male' ? 'Man' : 'Woman') : 'Person';
@@ -194,7 +224,7 @@ export const analyzeHairStyle = async (
           imageParts = [{ text: imagePrompt }];
       }
 
-      const imageResponse = await ai.models.generateContent({
+      const imageResponse = await imageGenAi.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
           parts: imageParts,

@@ -1,0 +1,10 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--tag'
+  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/safecutai-repo/safecutai-app'
+  - '.'
+  dir: 'safecutai'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/safecutai-repo/safecutai-app']

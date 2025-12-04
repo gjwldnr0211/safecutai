@@ -1,0 +1,1 @@
+Couldn't find the requested file /wasm/vision_bundle.js in @mediapipe/tasks-vision.

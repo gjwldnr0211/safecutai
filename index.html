@@ -4,56 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SafeCut AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: '#0d9488', // Teal 600 - Calming, professional
-              secondary: '#64748b', // Slate 500 - Neutral
-              background: '#f8fafc', // Slate 50
-            },
-            fontFamily: {
-              sans: ['Pretendard', 'sans-serif'],
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              scan: {
-                '0%, 100%': { transform: 'translateY(-100%)' },
-                '50%': { transform: 'translateY(100%)' }
-              }
-            },
-            animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'fade-in': 'fadeIn 0.5s ease-out forwards',
-              'scan': 'scan 2s linear infinite',
-            }
-          },
-        },
-      }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <style>
-      body { font-family: 'Noto Sans KR', sans-serif; }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm"
-  }
-}
-</script>
-</head>
+  </head>
   <body class="bg-background text-slate-900 h-screen overflow-hidden">
     <div id="root" class="h-full"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

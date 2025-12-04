@@ -342,11 +342,11 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
         
         const loadPromise = async () => {
             const filesetResolver = await FilesetResolver.forVisionTasks(
-                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+                "/models"
             );
             return await FaceLandmarker.createFromOptions(filesetResolver, {
                 baseOptions: {
-                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                    modelAssetPath: `/models/face_landmarker.task`,
                     delegate: "CPU"
                 },
                 outputFaceBlendshapes: false,
