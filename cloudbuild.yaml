@@ -6,7 +6,7 @@ steps:
   - '--tag'
   - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/safecutai-repo/safecutai-app'
   - '.'
-  dir: 'safecutai'
+
 
 # 2. Artifact Registry에 이미지 푸시
 - name: 'gcr.io/cloud-builders/docker'
