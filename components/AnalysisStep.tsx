@@ -354,10 +354,14 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
                     },
                     outputFaceBlendshapes: false,
                     runningMode: "VIDEO",
-                    numFaces: 1
+                    numFaces: 1,
+                    minFaceDetectionConfidence: 0.5,
+                    minFacePresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5
                 });
             } catch (e) {
                 console.warn("GPU delegate failed, falling back to CPU", e);
+                // CPU Fallback
                 return await FaceLandmarker.createFromOptions(filesetResolver, {
                     baseOptions: {
                         modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
@@ -365,7 +369,10 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
                     },
                     outputFaceBlendshapes: false,
                     runningMode: "VIDEO",
-                    numFaces: 1
+                    numFaces: 1,
+                    minFaceDetectionConfidence: 0.5,
+                    minFacePresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5
                 });
             }
         };
@@ -433,8 +440,8 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
                     setFaceDetected(false);
                 }
             } catch (e) {
-                console.warn("Detection error (ignoring):", e);
-                // Don't stop the loop, just log
+                // Log only once per second to avoid spam if error persists
+                if (Math.random() < 0.01) console.warn("Detection error:", e);
             }
         }
     }
@@ -679,7 +686,7 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
       </div>
 
       {/* 3. Bottom Controls (Overlay with Gradient) */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 pt-12 pb-8 px-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 z-30 pt-12 safe-bottom px-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent">
         
         {/* Manual Mode Hint (Centered above controls) */}
         {!customImage && manualMode && (
@@ -785,7 +792,7 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex space-x-3">
+        <div className="flex space-x-3 mb-6">
              <input 
                 type="file" 
                 ref={fileInputRef}
