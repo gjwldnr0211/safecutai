@@ -462,7 +462,7 @@ const ResultCard: React.FC<Props> = ({ recommendations, userImage, onSelect, opt
                         <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-4 text-rose-600 shadow-inner">
                             <Palette className="w-8 h-8" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-1">{isEn ? "Personal Color" : "퍼스널 컬러 진단"}</h3>
+                        <h3 className="text-xl font-bold text-slate-900 mb-1">{isEn ? "Personal Color" : "AI 퍼스널 컬러 진단"}</h3>
                         <p className="text-xs text-slate-400">Color Analysis & Recommendation</p>
                         {result.personalColor && (
                             <div className="mt-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md shadow-rose-200">

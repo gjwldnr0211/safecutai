@@ -342,21 +342,35 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
         
         const loadPromise = async () => {
             const filesetResolver = await FilesetResolver.forVisionTasks(
-                "/models"
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
             );
-            return await FaceLandmarker.createFromOptions(filesetResolver, {
-                baseOptions: {
-                    modelAssetPath: `/models/face_landmarker.task`,
-                    delegate: "CPU"
-                },
-                outputFaceBlendshapes: false,
-                runningMode: "VIDEO",
-                numFaces: 1
-            });
+            
+            try {
+                return await FaceLandmarker.createFromOptions(filesetResolver, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                        delegate: "GPU"
+                    },
+                    outputFaceBlendshapes: false,
+                    runningMode: "VIDEO",
+                    numFaces: 1
+                });
+            } catch (e) {
+                console.warn("GPU delegate failed, falling back to CPU", e);
+                return await FaceLandmarker.createFromOptions(filesetResolver, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                        delegate: "CPU"
+                    },
+                    outputFaceBlendshapes: false,
+                    runningMode: "VIDEO",
+                    numFaces: 1
+                });
+            }
         };
 
         const timeoutPromise = new Promise((_, reject) => 
-            window.setTimeout(() => reject(new Error("Model load timeout")), 3000)
+            window.setTimeout(() => reject(new Error("Model load timeout")), 15000)
         );
 
         faceLandmarkerRef.current = await Promise.race([loadPromise(), timeoutPromise]) as FaceLandmarker;
@@ -567,9 +581,9 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <VideoOff className="w-16 h-16 text-slate-300 mb-4" />
-        <p className="text-slate-600 mb-4">{error}</p>
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-black">
+        <VideoOff className="w-16 h-16 text-slate-500 mb-4" />
+        <p className="text-slate-400 mb-4">{error}</p>
         <button onClick={() => window.location.reload()} className="bg-primary text-white px-6 py-2 rounded-lg">
           {isEn ? "Retry" : "다시 시도"}
         </button>
@@ -580,15 +594,73 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
   const canProceed = faceDetected || customImage || manualMode;
 
   return (
-    <div className="relative h-full flex flex-col bg-black">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-black/70 to-transparent text-white flex justify-between items-center h-16">
-        <div className="flex space-x-2">
-            {/* Loading Indicator */}
+    <div className="relative h-full w-full bg-black overflow-hidden">
+      
+      {/* 1. Full Screen Camera View (Background) */}
+      <div className="absolute inset-0 z-0">
+        <video 
+          ref={videoRef}
+          autoPlay 
+          playsInline 
+          muted 
+          className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+          onLoadedData={() => videoRef.current?.play().catch(() => {})}
+        />
+        <canvas ref={canvasRef} className="hidden" />
+        
+        {/* Custom Image Preview Overlay */}
+        {customImage && (
+            <div className="absolute inset-0 bg-black z-10 flex items-center justify-center">
+                <img 
+                    src={`data:image/jpeg;base64,${customImage}`} 
+                    alt="Upload" 
+                    className="max-w-full max-h-full object-contain" 
+                />
+                <button 
+                    onClick={clearCustomImage}
+                    className="absolute top-20 right-4 bg-black/50 text-white rounded-full p-2 shadow-md hover:bg-black/70 z-50"
+                >
+                    <X size={20} />
+                </button>
+            </div>
+        )}
+
+        {/* AR Overlay */}
+        {!customImage && !manualMode && currentTemplate && (
+            <div 
+                className="absolute z-10 pointer-events-none transition-transform duration-75 ease-out"
+                style={{ 
+                    left: `${arStyle.x}%`,
+                    top: `${arStyle.y}%`,
+                    transform: `translate(-50%, -20%) scale(${arStyle.scale})`,
+                    width: '300px', 
+                    height: '350px',
+                    opacity: faceDetected ? 1 : 0.5 
+                }}
+            >
+                <svg viewBox="0 0 320 350" className="w-full h-full text-white drop-shadow-[0_0_15px_rgba(13,148,136,0.6)]">
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                    <g filter="url(#glow)">
+                        {currentTemplate.svgPath}
+                    </g>
+                </svg>
+            </div>
+        )}
+      </div>
+
+      {/* 2. Top Bar (Overlay) */}
+      <div className="absolute top-0 left-0 right-0 z-30 p-4 pt- safe-top bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center h-24">
+         <div className="flex space-x-2">
             {modelLoading && !customImage && (
-                <div className="flex items-center space-x-2 bg-black/50 px-3 py-1 rounded-full animate-fade-in mr-2">
+                <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full animate-fade-in">
                     <Loader2 className="w-3 h-3 animate-spin text-teal-400" />
-                    <span className="text-xs text-teal-400">
+                    <span className="text-xs text-teal-400 font-medium">
                          {showManualFallback ? (isEn ? 'Delay...' : '로딩 지연...') : (isEn ? 'AI Loading' : 'AI 로딩')}
                     </span>
                     {showManualFallback && (
@@ -604,9 +676,165 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
         </div>
       </div>
 
+      {/* 3. Bottom Controls (Overlay with Gradient) */}
+      <div className="absolute bottom-0 left-0 right-0 z-30 pt-12 pb-6 px-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
+        
+        {/* Manual Mode Hint (Centered above controls) */}
+        {!customImage && manualMode && (
+            <div className="flex justify-center mb-4 pointer-events-none">
+                 <div className="bg-black/60 text-white/90 text-xs px-4 py-2 rounded-full backdrop-blur-md border border-white/10">
+                    {isEn ? "Center your face in the frame" : "얼굴을 화면 중앙에 맞춰주세요"}
+                 </div>
+            </div>
+        )}
+
+        {/* 1. Control Row (Gender & Length) */}
+        <div className="flex justify-between items-center gap-2 mb-3">
+            <div className="flex bg-black/50 backdrop-blur-md rounded-xl p-1 border border-white/10">
+                <button 
+                    onClick={() => { setGender('Male'); playSound('click'); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${gender === 'Male' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    {isEn ? 'Male' : '남성'}
+                </button>
+                <button 
+                    onClick={() => { setGender('Female'); playSound('click'); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${gender === 'Female' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    {isEn ? 'Female' : '여성'}
+                </button>
+            </div>
+            
+            <div className="flex bg-black/50 backdrop-blur-md rounded-xl p-1 border border-white/10 flex-1 justify-between">
+                <button 
+                    onClick={() => { setCurrentLength('Short'); playSound('click'); }}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLength === 'Short' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    Short
+                </button>
+                <button 
+                    onClick={() => { setCurrentLength('Medium'); playSound('click'); }}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLength === 'Medium' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    Medium
+                </button>
+                <button 
+                    onClick={() => { setCurrentLength('Long'); playSound('click'); }}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLength === 'Long' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                    Long
+                </button>
+            </div>
+        </div>
+
+        {/* 2. Color Swatches Row */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-3 scrollbar-hide">
+            {HAIR_COLORS.map((color) => (
+                <button
+                    key={color.name}
+                    onClick={() => { setTargetColor(color.name); playSound('click'); }}
+                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all relative border-2 
+                        ${targetColor === color.name ? 'border-primary scale-110 shadow-[0_0_10px_rgba(20,184,166,0.5)]' : 'border-white/20 opacity-70 hover:opacity-100'}
+                    `}
+                    style={{ backgroundColor: color.hex }}
+                >
+                    {targetColor === color.name && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
+                    )}
+                    {color.name === 'Original' && (
+                        <span className="text-[8px] font-bold text-slate-400">{isEn ? 'Orig' : '기본'}</span>
+                    )}
+                </button>
+            ))}
+        </div>
+
+        {/* Style Selector Carousel */}
+        <div className="flex items-center justify-between px-2 bg-black/40 backdrop-blur-md rounded-2xl py-2 border border-white/10 mb-3">
+            {!customImage && activeTemplates.length > 0 && (
+                <button onClick={() => changeTemplate(-1)} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors active:scale-95">
+                    <ChevronLeft size={24} />
+                </button>
+            )}
+            
+            <div className="flex-1 flex flex-col items-center justify-center min-h-[40px]">
+                {customImage ? (
+                    <div className="text-center animate-fade-in">
+                         <h3 className="text-base font-bold text-white mb-0.5">{isEn ? 'Uploaded Style' : '업로드된 스타일'}</h3>
+                         <p className="text-[10px] text-teal-400">{isEn ? 'Applying style from photo' : '사진의 머리를 적용합니다'}</p>
+                    </div>
+                ) : activeTemplates.length > 0 ? (
+                    <div className="text-center animate-fade-in" key={currentTemplate.id}>
+                        <h3 className="text-base font-bold text-white mb-0.5">{isEn ? currentTemplate.nameEn : currentTemplate.name}</h3>
+                        <p className="text-[10px] text-teal-400">{isEn ? currentTemplate.descriptionEn : currentTemplate.description}</p>
+                    </div>
+                ) : (
+                     <div className="text-center">
+                        <h3 className="text-base font-bold text-white mb-0.5">{isEn ? 'No Style' : '스타일 없음'}</h3>
+                        <p className="text-[10px] text-red-400">{isEn ? 'No styles in this category.' : '해당 길이의 스타일이 없습니다.'}</p>
+                    </div>
+                )}
+            </div>
+
+            {!customImage && activeTemplates.length > 0 && (
+                <button onClick={() => changeTemplate(1)} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors active:scale-95">
+                    <ChevronRight size={24} />
+                </button>
+            )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex space-x-3">
+             <input 
+                type="file" 
+                ref={fileInputRef}
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileUpload}
+            />
+            <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-sm text-slate-300 w-16 rounded-2xl hover:bg-white/20 active:scale-95 transition-all border border-white/5"
+            >
+                <ImagePlus size={24} className="mb-1" />
+                <span className="text-[10px]">{isEn ? "Photo" : "사진"}</span>
+            </button>
+
+            <button
+            onClick={handleAnalyze}
+            disabled={loading || !canProceed}
+            className={`flex-1 font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center space-x-2
+                ${loading || !canProceed
+                    ? 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-white/5' 
+                    : 'bg-primary hover:bg-teal-500 text-white shadow-teal-900/50'}`}
+            >
+            {loading ? (
+                <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>{isEn ? "Analyzing..." : "스타일 분석 및 합성 중..."}</span>
+                </>
+            ) : (!canProceed) ? (
+                <>
+                <ScanFace className="w-5 h-5 animate-pulse" />
+                <span>{isEn ? "Detecting Face" : "얼굴을 비춰주세요"}</span>
+                </>
+            ) : manualMode ? (
+                <>
+                <Camera className="w-5 h-5" />
+                <span>{isEn ? "Capture & Analyze" : "촬영하고 스타일 확인"}</span>
+                </>
+            ) : (
+                <>
+                <CheckCircle2 className="w-5 h-5" />
+                <span>{customImage ? (isEn ? "Use this style" : "이 스타일 적용하기") : (isEn ? "Try this style" : "이 스타일 어울릴까?")}</span>
+                </>
+            )}
+            </button>
+        </div>
+      </div>
+
       {/* AESTHETIC LOADING OVERLAY */}
       {loading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-8">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-8">
             {/* Scan Line Effect */}
             <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
                 <div className="w-full h-1 bg-teal-500 shadow-[0_0_20px_rgba(20,184,166,0.8)] animate-scan"></div>
@@ -643,223 +871,6 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
             <p className="text-slate-500 text-[10px] mt-2">AI Processor Active</p>
         </div>
       )}
-
-      {/* Camera View */}
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-slate-900">
-        <video 
-          ref={videoRef}
-          autoPlay 
-          playsInline 
-          muted 
-          className="absolute min-w-full min-h-full object-cover transform -scale-x-100"
-          onLoadedData={() => videoRef.current?.play().catch(() => {})}
-        />
-        <canvas ref={canvasRef} className="hidden" />
-        
-        {/* Custom Image Preview Overlay */}
-        {customImage && (
-            <div className="absolute top-20 right-4 w-48 h-48 bg-white p-1 rounded-lg shadow-xl z-30 animate-fade-in border-2 border-primary">
-                <img 
-                    src={`data:image/jpeg;base64,${customImage}`} 
-                    alt="Upload" 
-                    className="w-full h-full object-cover rounded" 
-                />
-                <button 
-                    onClick={clearCustomImage}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
-                >
-                    <X size={12} />
-                </button>
-            </div>
-        )}
-
-        {/* AR Overlay - Only show if no custom image AND not in manual mode (because AR requires tracking) */}
-        {!customImage && !manualMode && currentTemplate && (
-            <div 
-                className="absolute z-10 pointer-events-none transition-transform duration-75 ease-out"
-                style={{ 
-                    left: `${arStyle.x}%`,
-                    top: `${arStyle.y}%`,
-                    transform: `translate(-50%, -20%) scale(${arStyle.scale})`,
-                    width: '300px', 
-                    height: '350px',
-                    opacity: faceDetected ? 1 : 0.5 
-                }}
-            >
-                <svg viewBox="0 0 320 350" className="w-full h-full text-white drop-shadow-[0_0_15px_rgba(13,148,136,0.6)]">
-                    <filter id="glow">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                        <feMerge>
-                            <feMergeNode in="coloredBlur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                    </filter>
-                    <g filter="url(#glow)">
-                        {currentTemplate.svgPath}
-                    </g>
-                </svg>
-            </div>
-        )}
-        
-        {/* Manual Mode Hint */}
-        {!customImage && manualMode && (
-            <div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none">
-                 <div className="bg-black/50 text-white text-xs px-4 py-2 rounded-full backdrop-blur-sm">
-                    {isEn ? "Center your face in the frame" : "얼굴을 화면 중앙에 맞춰주세요"}
-                 </div>
-            </div>
-        )}
-      </div>
-
-      {/* Controls - COMPACT LAYOUT FOR MOBILE */}
-      <div className="relative z-20 bg-slate-900 rounded-t-3xl p-4 pb-6 space-y-3 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
-        
-        {/* 1. Top Control Row (Gender & Length) */}
-        <div className="flex justify-between items-center gap-2 mb-1">
-            {/* Gender Toggle */}
-            <div className="flex bg-slate-800 rounded-xl p-1 shadow-inner">
-                <button 
-                    onClick={() => { setGender('Male'); playSound('click'); }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${gender === 'Male' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                    {isEn ? 'Male' : '남성'}
-                </button>
-                <button 
-                    onClick={() => { setGender('Female'); playSound('click'); }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${gender === 'Female' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                    {isEn ? 'Female' : '여성'}
-                </button>
-            </div>
-            
-            {/* Length Toggle */}
-            <div className="flex bg-slate-800 rounded-xl p-1 shadow-inner flex-1 justify-between">
-                <button 
-                    onClick={() => { setCurrentLength('Short'); playSound('click'); }}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLength === 'Short' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                    Short
-                </button>
-                <button 
-                    onClick={() => { setCurrentLength('Medium'); playSound('click'); }}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLength === 'Medium' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                    Medium
-                </button>
-                <button 
-                    onClick={() => { setCurrentLength('Long'); playSound('click'); }}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentLength === 'Long' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                    Long
-                </button>
-            </div>
-        </div>
-
-        {/* 2. Color Swatches Row */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide mask-image-linear-gradient">
-            {HAIR_COLORS.map((color) => (
-                <button
-                    key={color.name}
-                    onClick={() => { setTargetColor(color.name); playSound('click'); }}
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all relative border-2 
-                        ${targetColor === color.name ? 'border-primary scale-110 shadow-[0_0_10px_rgba(20,184,166,0.5)]' : 'border-slate-700 opacity-70 hover:opacity-100'}
-                    `}
-                    style={{ backgroundColor: color.hex }}
-                    title={isEn && color.labelEn ? color.labelEn : color.label}
-                >
-                    {targetColor === color.name && (
-                        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
-                    )}
-                    {color.name === 'Original' && (
-                        <span className="text-[8px] font-bold text-slate-400">{isEn ? 'Orig' : '기본'}</span>
-                    )}
-                </button>
-            ))}
-        </div>
-
-        {/* Style Selector Carousel */}
-        <div className="flex items-center justify-between px-2 bg-slate-800/50 rounded-2xl py-1 border border-slate-700/50">
-            {!customImage && activeTemplates.length > 0 && (
-                <button onClick={() => changeTemplate(-1)} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors active:scale-95">
-                    <ChevronLeft size={24} />
-                </button>
-            )}
-            
-            <div className="flex-1 flex flex-col items-center justify-center min-h-[50px]">
-                {customImage ? (
-                    <div className="text-center animate-fade-in">
-                         <h3 className="text-lg font-bold text-white mb-0.5">{isEn ? 'Uploaded Style' : '업로드된 스타일'}</h3>
-                         <p className="text-[10px] text-teal-400">{isEn ? 'Applying style from photo' : '사진의 머리를 적용합니다'}</p>
-                    </div>
-                ) : activeTemplates.length > 0 ? (
-                    <div className="text-center animate-fade-in" key={currentTemplate.id}>
-                        <h3 className="text-lg font-bold text-white mb-0.5">{isEn ? currentTemplate.nameEn : currentTemplate.name}</h3>
-                        <p className="text-[10px] text-teal-400">{isEn ? currentTemplate.descriptionEn : currentTemplate.description}</p>
-                    </div>
-                ) : (
-                     <div className="text-center">
-                        <h3 className="text-lg font-bold text-white mb-0.5">{isEn ? 'No Style' : '스타일 없음'}</h3>
-                        <p className="text-[10px] text-red-400">{isEn ? 'No styles in this category.' : '해당 길이의 스타일이 없습니다.'}</p>
-                    </div>
-                )}
-            </div>
-
-            {!customImage && activeTemplates.length > 0 && (
-                <button onClick={() => changeTemplate(1)} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors active:scale-95">
-                    <ChevronRight size={24} />
-                </button>
-            )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex space-x-3 pt-1">
-             <input 
-                type="file" 
-                ref={fileInputRef}
-                accept="image/*" 
-                className="hidden" 
-                onChange={handleFileUpload}
-            />
-            <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center bg-slate-800 text-slate-300 w-16 rounded-2xl hover:bg-slate-700 active:scale-95 transition-all"
-            >
-                <ImagePlus size={24} className="mb-1" />
-                <span className="text-[10px]">{isEn ? "Photo" : "사진"}</span>
-            </button>
-
-            <button
-            onClick={handleAnalyze}
-            disabled={loading || !canProceed}
-            className={`flex-1 font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center space-x-2
-                ${loading || !canProceed
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                    : 'bg-primary hover:bg-teal-600 text-white'}`}
-            >
-            {loading ? (
-                <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>{isEn ? "Analyzing..." : "스타일 분석 및 합성 중..."}</span>
-                </>
-            ) : (!canProceed) ? (
-                <>
-                <ScanFace className="w-5 h-5 animate-pulse" />
-                <span>{isEn ? "Detecting Face" : "얼굴을 비춰주세요"}</span>
-                </>
-            ) : manualMode ? (
-                <>
-                <Camera className="w-5 h-5" />
-                <span>{isEn ? "Capture & Analyze" : "촬영하고 스타일 확인"}</span>
-                </>
-            ) : (
-                <>
-                <CheckCircle2 className="w-5 h-5" />
-                <span>{customImage ? (isEn ? "Use this style" : "이 스타일 적용하기") : (isEn ? "Try this style" : "이 스타일 어울릴까?")}</span>
-                </>
-            )}
-            </button>
-        </div>
-      </div>
     </div>
   );
 };
