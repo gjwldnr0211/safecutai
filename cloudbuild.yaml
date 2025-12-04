@@ -24,3 +24,5 @@ steps:
   - '--region'
   - 'asia-northeast3' # 배포 리전
   - '--allow-unauthenticated' # 인증 없이 액세스 허용
+options:
+  logging: CLOUD_LOGGING_ONLY
