@@ -26,6 +26,17 @@ const MALE_TEMPLATES: HairStyleTemplate[] = [
     )
   },
   {
+    id: 'pomade',
+    name: '포마드',
+    nameEn: 'Pomade / Side Part',
+    description: '신뢰감을 주는 클래식한 스타일',
+    descriptionEn: 'Classic style giving trust',
+    category: 'Short',
+    svgPath: (
+        <path d="M90,60 Q150,20 230,50 Q260,80 250,160 Q240,200 200,210 Q120,210 80,190 Q70,150 60,100 Q60,60 90,60 M200,50 L190,80 M80,120 Q120,100 160,90" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" />
+    )
+  },
+  {
     id: 'dropcut',
     name: '드롭 컷',
     nameEn: 'Drop Cut',
@@ -34,6 +45,17 @@ const MALE_TEMPLATES: HairStyleTemplate[] = [
     category: 'Short',
     svgPath: (
         <path d="M90,60 Q160,20 230,60 Q260,100 250,160 Q240,200 200,220 Q120,220 80,200 Q70,160 60,100 Q60,60 90,60 M120,60 Q160,40 200,60" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" />
+    )
+  },
+  {
+    id: 'crop',
+    name: '크롭 컷',
+    nameEn: 'Crop Cut',
+    description: '직선적인 앞머리의 트렌디함',
+    descriptionEn: 'Trendy straight bangs',
+    category: 'Short',
+    svgPath: (
+        <path d="M80,70 Q160,30 240,70 Q270,110 260,180 Q250,220 160,230 Q70,220 60,180 Q50,110 80,70 M90,80 L230,80" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" />
     )
   },
   {
@@ -58,6 +80,17 @@ const MALE_TEMPLATES: HairStyleTemplate[] = [
     category: 'Medium',
     svgPath: (
       <path d="M90,70 Q160,10 230,70 Q270,120 260,200 Q250,250 200,270 Q160,280 120,270 Q70,250 60,200 Q50,120 90,70" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" />
+    )
+  },
+  {
+    id: 'seethrough',
+    name: '시스루 댄디',
+    nameEn: 'See-through Dandy',
+    description: '가볍고 부드러운 앞머리',
+    descriptionEn: 'Light and soft bangs',
+    category: 'Medium',
+    svgPath: (
+      <path d="M90,70 Q160,10 230,70 Q270,120 260,200 Q250,250 200,270 Q160,280 120,270 Q70,250 60,200 Q50,120 90,70 M130,70 L130,120 M160,70 L160,120 M190,70 L190,120" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" />
     )
   },
   {
@@ -133,6 +166,17 @@ const FEMALE_TEMPLATES: HairStyleTemplate[] = [
     )
   },
   {
+    id: 'ruffle',
+    name: '러플 펌',
+    nameEn: 'Ruffle Perm',
+    description: '자유분방한 컬의 숏 스타일',
+    descriptionEn: 'Free-spirited curly short style',
+    category: 'Short',
+    svgPath: (
+        <path d="M80,70 Q160,20 240,70 Q280,100 270,220 Q290,260 260,280 Q160,290 60,280 Q30,260 50,220 Q40,100 80,70 M80,120 Q100,160 120,120 M200,120 Q220,160 240,120" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" strokeDasharray="5,5" />
+    )
+  },
+  {
     id: 'shortcut',
     name: '숏 컷',
     nameEn: 'Pixie / Short',
@@ -156,6 +200,17 @@ const FEMALE_TEMPLATES: HairStyleTemplate[] = [
   },
 
   // MEDIUM
+  {
+    id: 'medium_c',
+    name: '중단발 C컬',
+    nameEn: 'Medium C-Curl',
+    description: '단정하고 우아한 오피스 룩',
+    descriptionEn: 'Neat and elegant office look',
+    category: 'Medium',
+    svgPath: (
+       <path d="M100,60 Q160,10 220,60 Q260,100 260,240 Q260,280 230,270 Q160,280 90,270 Q60,280 60,240 Q60,100 100,60" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" />
+    )
+  },
   {
     id: 'build',
     name: '빌드/S컬',
@@ -191,6 +246,17 @@ const FEMALE_TEMPLATES: HairStyleTemplate[] = [
   },
 
   // LONG
+  {
+    id: 'grace',
+    name: '그레이스 펌',
+    nameEn: 'Grace Perm',
+    description: '풍성하고 고급스러운 여신 웨이브',
+    descriptionEn: 'Voluminous and luxurious waves',
+    category: 'Long',
+    svgPath: (
+        <path d="M90,50 Q160,10 230,50 Q280,100 300,200 Q320,300 280,420 Q160,440 40,420 Q0,300 20,200 Q40,100 90,50 M20,250 Q0,300 30,350 M300,250 Q320,300 290,350" fill="none" stroke="currentColor" strokeWidth="4" opacity="0.8" />
+    )
+  },
   {
     id: 'hippie',
     name: '히피 펌',
@@ -855,7 +921,7 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang }) => {
 
       {/* AESTHETIC LOADING OVERLAY */}
       {loading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-8">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in p-8">
             {/* Scan Line Effect */}
             <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
                 <div className="w-full h-1 bg-teal-500 shadow-[0_0_20px_rgba(20,184,166,0.8)] animate-scan"></div>
