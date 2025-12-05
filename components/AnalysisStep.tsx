@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, VideoOff, ScanFace, ImagePlus, X, Camera, Palette, Sparkles, BrainCircuit } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Loader2, VideoOff, ScanFace, ImagePlus, X, Camera, Palette, Sparkles, BrainCircuit, Home } from 'lucide-react';
 import { playSound } from '../utils/audio';
 import { analyzeHairStyle, getHairstyleFromImage } from '../services/geminiService';
 import { StyleRecommendation, HairStyleTemplate, AnalysisOptions } from '../types';
@@ -9,6 +9,8 @@ interface Props {
   onComplete: (recommendation: StyleRecommendation, imageBase64: string | null, options: AnalysisOptions) => void;
   lang: 'ko' | 'en';
   gender: 'Male' | 'Female';
+  onHome: () => void;
+  checkLimit: () => boolean;
 }
 
 // --- TEMPLATE DEFINITIONS ---
@@ -306,7 +308,7 @@ const HAIR_COLORS = [
     { name: 'Violet', label: '바이올렛', labelEn: 'Violet', hex: '#a78bfa' },
 ];
 
-const AnalysisStep: React.FC<Props> = ({ onComplete, lang, gender }) => {
+const AnalysisStep: React.FC<Props> = ({ onComplete, lang, gender, onHome, checkLimit }) => {
   const isEn = lang === 'en';
   
   // Settings State - MOVED TO VISIBLE CONTROLS
@@ -634,6 +636,9 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang, gender }) => {
   };
 
   const handleAnalyze = async () => {
+    // 1. Check Usage Limit First
+    if (!checkLimit()) return;
+
     setLoading(true);
     setLoadingStepIndex(0);
     playSound('click');
@@ -735,19 +740,28 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang, gender }) => {
         />
         <canvas ref={canvasRef} className="hidden" />
         
-        {/* Custom Image Preview Overlay */}
+        {/* Custom Image Preview Overlay - CHANGED TO SMALL THUMBNAIL */}
         {customImage && (
-            <div className="absolute inset-0 bg-black z-10 flex items-center justify-center">
-                <img 
-                    src={`data:image/jpeg;base64,${customImage}`} 
-                    alt="Upload" 
-                    className="max-w-full max-h-full object-contain" 
-                />
+            <div className="absolute top-24 left-4 z-40 w-24 sm:w-28 aspect-[3/4] animate-fade-in group">
+                 {/* Thumbnail Image */}
+                 <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-white/40 shadow-xl bg-black/20 backdrop-blur-sm">
+                    <img 
+                        src={`data:image/jpeg;base64,${customImage}`} 
+                        alt="Reference" 
+                        className="w-full h-full object-cover opacity-90" 
+                    />
+                    {/* Tiny Label */}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/50 text-[10px] text-white text-center py-0.5 backdrop-blur-[1px]">
+                        {isEn ? "Ref" : "참고사진"}
+                    </div>
+                </div>
+                
+                {/* Close Button */}
                 <button 
                     onClick={clearCustomImage}
-                    className="absolute top-20 right-4 bg-black/50 text-white rounded-full p-2 shadow-md hover:bg-black/70 z-50"
+                    className="absolute -top-2 -right-2 bg-slate-900 text-white rounded-full p-1.5 shadow-md border border-white/20 hover:bg-red-500 active:scale-90 transition-all z-50"
                 >
-                    <X size={20} />
+                    <X size={14} />
                 </button>
             </div>
         )}
@@ -784,6 +798,14 @@ const AnalysisStep: React.FC<Props> = ({ onComplete, lang, gender }) => {
       {/* 2. Top Bar (Overlay) */}
       <div className="absolute top-0 left-0 right-0 z-30 p-4 pt- safe-top flex justify-between items-center h-24 pointer-events-none">
          <div className="flex space-x-2 pointer-events-auto">
+            {/* HOME BUTTON (New) */}
+            <button 
+                onClick={onHome}
+                className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-xl text-slate-200 w-10 h-10 rounded-full hover:bg-white/20 hover:text-white active:scale-95 transition-all border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] mr-2"
+            >
+                <Home size={18} />
+            </button>
+
             {modelLoading && !customImage && (
                 <div className="flex items-center space-x-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full animate-fade-in">
                     <Loader2 className={`w-3 h-3 animate-spin ${getThemeClass('text')}`} />

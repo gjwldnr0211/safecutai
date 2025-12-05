@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { StyleRecommendation, AnalysisOptions } from '../types';
 import { playSound } from '../utils/audio';
 import { analyzeHairStyle } from '../services/geminiService';
-import { MessageSquareOff, ShieldCheck, RefreshCcw, Settings2, RotateCcw, Info, Sparkles, Share2, Download, Palette, ScanFace, MapPin, ChevronRight, X, UserCheck } from 'lucide-react';
+import { MessageSquareOff, ShieldCheck, RefreshCcw, Settings2, RotateCcw, Info, Sparkles, Share2, Download, Palette, ScanFace, MapPin, ChevronRight, X, UserCheck, Instagram, Twitter, MessageCircle, Copy } from 'lucide-react';
 
 interface Props {
   recommendations: StyleRecommendation[] | StyleRecommendation;
@@ -43,6 +43,7 @@ const ResultCard: React.FC<Props> = ({ recommendations, userImage, onSelect, opt
   const [showFaceAnalysis, setShowFaceAnalysis] = useState(false);
   const [showStylingGuide, setShowStylingGuide] = useState(false);
   const [showColorAnalysis, setShowColorAnalysis] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false); // NEW: Share Modal State
 
   // View State (Replaces Slider)
   const [activeView, setActiveView] = useState<'before' | 'after'>('after');
@@ -89,39 +90,118 @@ const ResultCard: React.FC<Props> = ({ recommendations, userImage, onSelect, opt
     }
   };
 
-  const handleShare = async () => {
-    playSound('click');
-    if (result.imageUrl) {
-        try {
-            const blob = await (await fetch(result.imageUrl)).blob();
-            const file = new File([blob], "hairstyle_result.png", { type: blob.type });
+  // --- SHARE FUNCTIONS ---
 
-            if (navigator.share) {
-                await navigator.share({
-                    title: 'SafeCut AI Result',
-                    text: isEn ? `Check out this style: "${result.name}"` : `이 스타일 어때요? "${result.name}"`,
-                    files: [file],
-                });
-            } else {
-                // Fallback for browsers without share API
-                const link = document.createElement('a');
-                link.href = result.imageUrl;
-                link.download = 'hairstyle_result.png';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        } catch (error) {
-            console.error("Share failed", error);
-            // Fallback just in case
-            const link = document.createElement('a');
-            link.href = result.imageUrl;
-            link.download = 'hairstyle_result.png';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    }
+  const handleShareClick = () => {
+      playSound('click');
+      setShowShareModal(true);
+  };
+
+  // Helper to add watermark and return Blob
+  const createWatermarkedBlob = async (imageUrl: string): Promise<Blob | null> => {
+      return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.src = imageUrl;
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              if (!ctx) { resolve(null); return; }
+
+              canvas.width = img.width;
+              canvas.height = img.height;
+
+              // Draw Original Image
+              ctx.drawImage(img, 0, 0);
+
+              // Add Watermark
+              const fontSize = Math.max(20, img.width * 0.05); // Responsive font size
+              ctx.font = `bold ${fontSize}px sans-serif`;
+              ctx.textAlign = 'right';
+              ctx.textBaseline = 'bottom';
+              
+              // Shadow for visibility
+              ctx.shadowColor = "rgba(0,0,0,0.5)";
+              ctx.shadowBlur = 4;
+              ctx.shadowOffsetX = 2;
+              ctx.shadowOffsetY = 2;
+
+              // Text fill
+              ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+              const padding = fontSize / 2;
+              ctx.fillText("SafeCutAI", canvas.width - padding, canvas.height - padding);
+
+              canvas.toBlob((blob) => {
+                  resolve(blob);
+              }, 'image/png');
+          };
+          img.onerror = () => resolve(null);
+      });
+  };
+
+  const getResultBlob = async (withWatermark: boolean = false) => {
+      if (!result.imageUrl) return null;
+      if (withWatermark) {
+          const blob = await createWatermarkedBlob(result.imageUrl);
+          if (blob) return new File([blob], "safecut_result.png", { type: blob.type });
+      }
+      // Fallback or non-watermark
+      const blob = await (await fetch(result.imageUrl)).blob();
+      return new File([blob], "safecut_result.png", { type: blob.type });
+  };
+
+  const shareNative = async () => {
+      playSound('click');
+      try {
+          const file = await getResultBlob(true); // Watermarked
+          if (file && navigator.share) {
+              await navigator.share({
+                  title: 'SafeCut AI Result',
+                  text: isEn ? `Check out my new style: ${result.name}!` : `SafeCut AI로 찾은 내 인생 머리: ${result.name}!`,
+                  files: [file],
+              });
+              playSound('success');
+          } else {
+              alert(isEn ? "Sharing not supported on this device." : "이 기기에서는 공유 기능을 지원하지 않습니다.");
+          }
+      } catch (error) {
+          console.log("Share cancelled or failed", error);
+      }
+  };
+
+  const saveImage = async () => {
+      playSound('click');
+      if (result.imageUrl) {
+          // Use watermark logic for save too
+          const blob = await createWatermarkedBlob(result.imageUrl);
+          if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `safecut_${new Date().getTime()}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              
+              playSound('success');
+              
+              // Show toast/alert
+              const msg = isEn 
+                ? "Image Saved! Open Instagram/Facebook to share." 
+                : "이미지가 저장되었습니다! 인스타그램이나 페이스북을 열어 공유해보세요.";
+              alert(msg);
+          }
+      }
+  };
+
+  const shareTwitter = () => {
+      playSound('click');
+      const text = isEn 
+        ? `Check out my new AI hairstyle: ${result.name} #SafeCutAI` 
+        : `SafeCut AI로 찾은 내 인생 머리: ${result.name} #SafeCutAI #AI헤어스타일`;
+      const url = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
+      window.open(url, '_blank');
   };
 
   const getLengthLabel = (val: number) => {
@@ -142,8 +222,8 @@ const ResultCard: React.FC<Props> = ({ recommendations, userImage, onSelect, opt
             <span>{isEn ? "AI Style Simulation" : "AI 스타일 시뮬레이션"}</span>
             <div className="flex gap-2">
                 <button 
-                    onClick={handleShare}
-                    className="p-2 rounded-full bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                    onClick={handleShareClick}
+                    className="p-2 rounded-full bg-white text-primary border border-orange-100 hover:bg-orange-50 shadow-sm transition-all"
                     title={isEn ? "Share" : "공유하기"}
                 >
                     <Share2 className="w-5 h-5" />
@@ -395,6 +475,75 @@ const ResultCard: React.FC<Props> = ({ recommendations, userImage, onSelect, opt
             >
                 {isEn ? "Change length or color?" : "길이나 컬러를 바꾸고 싶으신가요?"}
             </button>
+        )}
+
+        {/* --- MODALS SECTION --- */}
+
+        {/* SHARE MODAL (NEW) */}
+        {showShareModal && (
+            <div 
+                className="absolute inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4"
+                onClick={(e) => {
+                    if(e.target === e.currentTarget) setShowShareModal(false);
+                }}
+            >
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 w-full max-w-sm rounded-[2rem] p-6 relative animate-fade-in shadow-2xl mb-4 sm:mb-0">
+                    <button 
+                        onClick={() => setShowShareModal(false)}
+                        className="absolute top-4 right-4 p-2 text-white/60 hover:text-white transition-colors"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                    
+                    <div className="text-center mb-8">
+                        <h3 className="text-xl font-bold text-white mb-1">{isEn ? "Share Your Style" : "스타일 공유하기"}</h3>
+                        <p className="text-xs text-white/60">{isEn ? "Show off your new look!" : "새로운 스타일을 친구들에게 자랑해보세요!"}</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                        {/* 1. Instagram/Facebook (Download) */}
+                        <button 
+                            onClick={saveImage}
+                            className="flex flex-col items-center justify-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 p-[2px] shadow-lg group-active:scale-95 transition-transform">
+                                <div className="w-full h-full bg-black/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white">
+                                    <Instagram className="w-7 h-7" />
+                                </div>
+                            </div>
+                            <span className="text-[10px] text-white/80 font-medium">Insta/FB</span>
+                        </button>
+
+                         {/* 2. Twitter (Web Intent) */}
+                         <button 
+                            onClick={shareTwitter}
+                            className="flex flex-col items-center justify-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 rounded-2xl bg-black border border-white/20 shadow-lg group-active:scale-95 transition-transform flex items-center justify-center text-white">
+                                <Twitter className="w-7 h-7" />
+                            </div>
+                            <span className="text-[10px] text-white/80 font-medium">X (Twitter)</span>
+                        </button>
+
+                        {/* 3. Native Share (Kakao/Message) */}
+                        <button 
+                            onClick={shareNative}
+                            className="flex flex-col items-center justify-center gap-2 group"
+                        >
+                            <div className="w-14 h-14 rounded-2xl bg-yellow-400 shadow-lg group-active:scale-95 transition-transform flex items-center justify-center text-amber-900">
+                                <MessageCircle className="w-7 h-7" />
+                            </div>
+                            <span className="text-[10px] text-white/80 font-medium">Kakao/Msg</span>
+                        </button>
+                    </div>
+                    
+                    <div className="mt-6 p-3 bg-white/5 rounded-xl border border-white/10 text-center">
+                        <p className="text-[10px] text-white/50">
+                            {isEn ? "Tip: Image will be saved with watermark." : "Tip: 이미지는 워터마크와 함께 저장됩니다."}
+                        </p>
+                    </div>
+                </div>
+            </div>
         )}
 
         {/* FACE ANALYSIS MODAL */}
