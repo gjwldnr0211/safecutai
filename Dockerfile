@@ -13,11 +13,11 @@ FROM nginx:stable-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 # Copy the full Nginx config
  COPY nginx.conf /etc/nginx/nginx.conf
- # Copy the startup script
- COPY start.sh /start.sh
+# Copy the startup script to be run by the Nginx entrypoint
+COPY start.sh /docker-entrypoint.d/99-safecut-init.sh   
  # Ensure the script is executable
- RUN chmod +x /start.sh
+RUN chmod +x /docker-entrypoint.d/99-safecut-init.sh 
 
 EXPOSE 8080
-# Run the startup script which will prepare the config and start nginx
-CMD ["/start.sh"]
+# The Nginx entrypoint will run our script and then execute the default CMD
+CMD ["nginx", "-g", "daemon off;"]  
