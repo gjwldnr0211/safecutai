@@ -1,12 +1,12 @@
 # Stage 1: Build the React application
-FROM node:20-alpine AS build
-   WORKDIR /app
-    COPY package*.json ./
+     FROM node:20-alpine AS build
+     WORKDIR /app
+     COPY package*.json ./
      RUN npm install
-   COPY . .
-    # This line is important if your app uses models from the public directory
-    COPY public/models /app/public/models
-    # The API key will be loaded at runtime, not build time.
+     COPY . .
+     # If public/models directory is not essential or does not exist, remove this line:
+     # COPY public/models /app/public/models
+     # The API key will be loaded at runtime, not build time.
     RUN npm run build
     
     # Stage 2: Serve the static files with Nginx
